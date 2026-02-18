@@ -69,7 +69,7 @@ aov.rasch <- function(data, group = "group", person = "person", item = "item", r
                                "length(unique(tapply(data.test$", item, ", data.test$", person, ", function(x) sum(table(x) == 1)))) == 1")))) {
     
      restab <- aov.rasch.balanced(data, group = group, person = person, item = item, response = response,
-                                 output = output)
+                                  output = output)
     
   } else {
     

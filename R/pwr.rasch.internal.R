@@ -7,9 +7,8 @@
 # Authors: Takuya Yanagida <takuya.yanagida@univie.ac.at>
 #  		     Jan Steinfeld <jan.steinfeld@univie.ac.at>
 #
-##########################################################################################################
 
-pwr.rasch.internal <- function(b = b, ipar = ipar, ppar = ppar, 
+pwr.rasch.internal <- function(b = b, ipar = ipar, ppar = ppar, design = design,  
                                runs = runs, H0 = H0, sig.level = sig.level, 
                                method = method, output = output) {
   
@@ -29,14 +28,14 @@ pwr.rasch.internal <- function(b = b, ipar = ipar, ppar = ppar,
   #-----------------------------------------------------------------------------------------------------#
   # Simulation
   
-  method <- ifelse(all(c("loop", "vectorized") %in% method), "vectorized", method)
+  method <- ifelse(!is.null(design), "loop", ifelse(all(c("loop", "vectorized") %in% method), "vectorized", method))
   
   if (!method %in% c("loop", "vectorized")) {
     
     stop(paste0("Option \"", method, "\" for argument method unknown, use \"loop\" or \"vectorized\""))
     
   } 
-  
+
   gc()
   
   ### for-loop
@@ -59,11 +58,19 @@ pwr.rasch.internal <- function(b = b, ipar = ipar, ppar = ppar,
         cat("\r", paste0(" run ", formatC(i, digits = nchar(runs) - 1, format = "d", flag = 0)," of ",runs,"..."))
         
         # Simulate 0/1 data
-        dat <- rbind(simul.rasch(eval(parse(text = ppar[[1]])), ipar[[1]]), 
-                     simul.rasch(eval(parse(text = ppar[[2]])), ipar[[1]]))
+        dat <- rbind(simul.rasch(eval(parse(text = ppar[[1]])), ipar[[1]], design = design), 
+                     simul.rasch(eval(parse(text = ppar[[2]])), ipar[[1]], design = design))
         
         # Three-way analysis of variance with mixed classification
-        H0.AC.p <- c(H0.AC.p, aov.rasch.sim(data = reshape.rasch(dat, group = group)))    
+        if (is.null(design)) {
+          
+          H0.AC.p <- c(H0.AC.p, aov.rasch.sim(data = reshape.rasch(dat, group = group)))    
+        
+        } else {
+
+          H0.AC.p <- c(H0.AC.p, aov.rasch.sim.design(data = reshape.rasch(dat, group = group)))    
+          
+        }
         
       }
       
@@ -81,11 +88,19 @@ pwr.rasch.internal <- function(b = b, ipar = ipar, ppar = ppar,
       cat("\r", paste0(" run ", formatC(i, digits = nchar(runs) - 1, format = "d", flag = 0)," of ", runs,"..."))
       
       # Simulate 0/1 data
-      dat <- rbind(simul.rasch(eval(parse(text = ppar[[1]])), ipar[[1]]),
-                   simul.rasch(eval(parse(text = ppar[[2]])), ipar[[2]]))
+      dat <- rbind(simul.rasch(eval(parse(text = ppar[[1]])), ipar[[1]], design = design),
+                   simul.rasch(eval(parse(text = ppar[[2]])), ipar[[2]], design = design))
       
       # Three-way analysis of variance with mixed classification
-      H1.AC.p <- c(H1.AC.p, aov.rasch.sim(data = reshape.rasch(dat, group = group))) 
+      if (is.null(design)) {
+        
+        H1.AC.p <- c(H1.AC.p, aov.rasch.sim(data = reshape.rasch(dat, group = group)))    
+        
+      } else {
+        
+        H1.AC.p <- c(H1.AC.p, aov.rasch.sim.design(data = reshape.rasch(dat, group = group)))    
+        
+      }
       
     }
     
@@ -103,12 +118,12 @@ pwr.rasch.internal <- function(b = b, ipar = ipar, ppar = ppar,
       
       cat(paste0("  Conducting H0 simulation...    ", t1 <- Sys.time(), "\n"))          
       
-      dat.mx <- rbind(simul.rasch(eval(parse(text = ppar[[1]])), ipar[[1]]), 
-                      simul.rasch(eval(parse(text = ppar[[2]])), ipar[[1]]))
+      dat.mx <- rbind(simul.rasch(eval(parse(text = ppar[[1]])), ipar[[1]], design), 
+                      simul.rasch(eval(parse(text = ppar[[2]])), ipar[[1]], design))
       dat.mx <- reshape.rasch(dat.mx, group = group)
       
-      dat.mx1 <- simul.rasch(eval(parse(text = sub("b", "(runs-1)*b", ppar[[1]]))), ipar[[1]]) 
-      dat.mx2 <- simul.rasch(eval(parse(text = sub("b", "(runs-1)*b", ppar[[2]]))), ipar[[1]])
+      dat.mx1 <- simul.rasch(eval(parse(text = sub("b", "(runs-1)*b", ppar[[1]]))), ipar[[1]], design) 
+      dat.mx2 <- simul.rasch(eval(parse(text = sub("b", "(runs-1)*b", ppar[[2]]))), ipar[[1]], design)
       
       ###
       
@@ -131,12 +146,12 @@ pwr.rasch.internal <- function(b = b, ipar = ipar, ppar = ppar,
     # H1 condition    
     cat(paste0("  Conducting H1 simulation...    ", if (H0 == FALSE) t1 <- Sys.time() else Sys.time(), "\n"))   
     
-    dat.mx <- rbind(simul.rasch(eval(parse(text = ppar[[1]])), ipar[[1]]),
-                    simul.rasch(eval(parse(text = ppar[[2]])), ipar[[2]]))
+    dat.mx <- rbind(simul.rasch(eval(parse(text = ppar[[1]])), ipar[[1]], design = design),
+                    simul.rasch(eval(parse(text = ppar[[2]])), ipar[[2]], design = design))
     dat.mx <- reshape.rasch(dat.mx, group = group)
     
-    dat.mx1 <- simul.rasch(eval(parse(text = sub("b", "(runs-1)*b", ppar[[1]]))), ipar[[1]]) 
-    dat.mx2 <- simul.rasch(eval(parse(text = sub("b", "(runs-1)*b", ppar[[2]]))), ipar[[2]])
+    dat.mx1 <- simul.rasch(eval(parse(text = sub("b", "(runs-1)*b", ppar[[1]]))), ipar[[1]], design = design) 
+    dat.mx2 <- simul.rasch(eval(parse(text = sub("b", "(runs-1)*b", ppar[[2]]))), ipar[[2]], design = design)
     
     ###
     
@@ -164,14 +179,14 @@ pwr.rasch.internal <- function(b = b, ipar = ipar, ppar = ppar,
   
   if (H0 == TRUE) {
   
-    return(list(b = b, ipar = ipar, c = c, ppar = ppar, runs = runs, sig.level = sig.level,
+    return(list(b = b, ipar = ipar, design = design, c = c, ppar = ppar, runs = runs, sig.level = sig.level,
                 H0.AC.p = H0.AC.p, H1.AC.p = H1.AC.p,
                 power = sum(H1.AC.p < sig.level) / runs,
                 type1 = sum(H0.AC.p < sig.level) / runs))
     
   } else {
     
-    return(list(b = b, ipar = ipar, c = c, ppar = ppar, runs = runs, sig.level = sig.level,
+    return(list(b = b, ipar = ipar, design = design, c = c, ppar = ppar, runs = runs, sig.level = sig.level,
                 H1.AC.p = H1.AC.p,
                 power = sum(H1.AC.p < sig.level) / runs))
     

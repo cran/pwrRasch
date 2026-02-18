@@ -3,7 +3,6 @@
 #' Statistical power simulation for testing the Rasch Model 
 #' based on a three-way analysis of variance design with mixed classification.
 #' 
-#' @docType package
 #' @name pwrRasch
 #' 
 #' @importFrom graphics plot legend points axis box lines mtext
@@ -28,7 +27,7 @@
 #' Verhelst, N., Hatzinger, R., & Mair, P. (2007). The Rasch sampler. \emph{Journal of Statistical Software, 20}(4), 1-14.
 #'
 NULL
-#' Sample of test data from subtest 2 of the Adaptive Intelligence Diagnosticum (AID3; Kubinger \& Holocher-Ertl, 2014)
+#' Sample of test data from subtest 2 of the Adaptive Intelligence Diagnosticum (AID3)
 #'
 #' A dataset containing the test data of 300 childen (drawn randomly from the original dataset).
 #' The variables are as follows:
@@ -36,7 +35,7 @@ NULL
 #' @format A data frame with 300 rows and 28 variables:
 #' \itemize{
 #'   \item ID: ID variable of each testee
-#'   \item age_in_month: the age of the testperson in month
+#'   \item age_in_month: the age of the testee in month
 #'   \item sex: gender of the testee
 #'   \item country: country of the testee
 #'   \item stage: stage of the data collection

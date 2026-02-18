@@ -17,6 +17,7 @@
 #' 
 #' @param b           Either a vector or an integer indicating the number of observations in each group.
 #' @param ipar        Item parameters in both groups specified in a list.
+#' @param design      Test booklet design
 #' @param ppar        Person parameters specified by a distribution for each group.
 #' @param runs        Number of simulation runs. 
 #' @param H0          If \code{TRUE}, null hypothesis condition is simulated.
@@ -40,6 +41,7 @@
 #' \tabular{ll}{ 
 #'   \code{b}         \tab number of observations in each group \cr
 #'   \code{ipar}      \tab item parameters in both subgroups \cr
+#'   \code{design}    \tab test booklet design \cr
 #'   \code{c}         \tab number of items \cr
 #'   \code{ppar}      \tab distribution of person parameters \cr
 #'   \code{runs}      \tab number of simulation runs \cr
@@ -73,7 +75,7 @@
 #' # uniform distribution [-3, 3] of person parameters
 #' pwr.rasch(200, ipar = list(ipar1, ipar2), ppar = list("runif(b, -3, 3)", "runif(b, -3, 3)"))
 #' }
-pwr.rasch <- function(b, ipar = list(),
+pwr.rasch <- function(b, ipar = list(), design = NULL,
                       ppar = list("rnorm(b, mean = 0, sd = 1.5)", "rnorm(b, mean = 0, sd = 1.5)"),
                       runs = 1000, H0 = TRUE, sig.level = 0.05, 
                       method = c("loop", "vectorized"), output = TRUE) {
@@ -96,6 +98,36 @@ pwr.rasch <- function(b, ipar = list(),
     
   }   
   
+  if (!is.null(design)) {
+    
+    n.booklets <- nrow(design)
+    
+    # entries in the test design consists of 0 and 1 
+    if (!all(unlist(design) %in% c(0, 1))) {
+      
+      stop("Entries in the test design does not consist of 0s and 1s")
+      
+    }
+    
+    # number of items and test design 
+    
+    n.items <- unique(unlist(lapply(ipar, length)))
+    
+    if (n.items != ncol(design)) {
+      
+      stop("Number of specified items does not match the test design")
+      
+    }
+    
+    # total number of persons divideable by number of booklets 
+    if (any((b / n.booklets) %% 1 != 0)) {
+      
+      stop("Specified number of persons cannot equally distributed to the number of booklets")
+      
+    }
+    
+  }
+  
   #--------------------------------------------------------------------------------------------------------#
 
   cat("--------------------------------------------------------\n")
@@ -108,9 +140,9 @@ pwr.rasch <- function(b, ipar = list(),
  
   if (length(b) == 1) {
 
-      simres <- pwr.rasch.internal(b = b, ipar = ipar, ppar = ppar, 
-                                  runs = runs, H0 = H0, sig.level = sig.level, 
-                                  method = method, output = output)
+      simres <- pwr.rasch.internal(b = b, ipar = ipar, ppar = ppar, design = design, 
+                                   runs = runs, H0 = H0, sig.level = sig.level, 
+                                   method = method, output = output)
 
   } else { # length(b) > 1
       
@@ -120,14 +152,14 @@ pwr.rasch <- function(b, ipar = list(),
               
       if (i == b[1]) {
           
-        simres[[j]] <- pwr.rasch.internal(b = i, ipar = ipar, ppar = ppar, 
+        simres[[j]] <- pwr.rasch.internal(b = i, ipar = ipar, ppar = ppar, design = design, 
                                           runs = runs, H0 = H0, sig.level = sig.level, 
                                           method = method, output = FALSE)
         j <- j + 1 
           
       } else {
           
-        simres[[j]] <- pwr.rasch.internal(b = i, ipar = ipar, ppar = ppar, 
+        simres[[j]] <- pwr.rasch.internal(b = i, ipar = ipar, ppar = ppar, design = design,
                                           runs = runs, H0 = H0, sig.level = sig.level, 
                                           method = method, output = FALSE)     
         j <- j + 1 
@@ -146,30 +178,64 @@ pwr.rasch <- function(b, ipar = list(),
     if (output == TRUE) {
 
       c <- unique(unlist(lapply(ipar, length)))
-        
-      if (H0 == TRUE) {
-          
-        cat("\n  Statistical Power Simulation for the Rasch model \n\n",
-              
-            "    b (number of persons in each group): ", b, "\n",
-            "    c (number of items):                 ", c, "\n",        
-            "    simulation runs:                     ", runs, "\n\n",
-              
-            "    Estimated statistical power: ", formatC(simres$power, format = "f", digits = 3), "\n",
-            "    Nominal significance level:  ", sig.level, "\n",
-            "    Empirical significance level:", formatC(simres$type1, format = "f", digits = 3), "\n")
-                        
+      
+      if (is.null(design)) {
+      
+        if (H0 == TRUE) {
+                      
+          cat("\n  Statistical Power Simulation for the Rasch model \n\n",
+                
+              "    b (number of persons in each group): ", b, "\n",
+              "    c (number of items):                 ", c, "\n",        
+              "    simulation runs:                     ", runs, "\n\n",
+                
+              "    Estimated statistical power: ", formatC(simres$power, format = "f", digits = 3), "\n",
+              "    Nominal significance level:  ", sig.level, "\n",
+              "    Empirical significance level:", formatC(simres$type1, format = "f", digits = 3), "\n")
+                          
+        } else {
+                      
+          cat("\n  Statistical Power Simulation for the Rasch model \n\n", 
+                
+              "    b (numer of persons in each group): ", b, "\n",
+              "    c (numer of items):                 ", c, "\n",   
+              "    simulation runs:                    ", runs, "\n\n",
+                
+              "    Estimated statistical power: ", formatC(simres$power, format = "f", digits = 3), "\n",
+              "    Nominal significance level:  ", sig.level, "\n")  
+        }
+                   
       } else {
           
-        cat("\n  Statistical Power Simulation for the Rasch model \n\n", 
+        if (H0 == TRUE) {
+                      
+          cat("\n  Statistical Power Simulation for the Rasch model \n\n",
+                  
+              "    Test design with", nrow(design), "booklets: \n", 
+              "      b (number of persons in each group):  ", b, "\n",
+              "        (number of persons in each booklet):", b / nrow(design), "\n",
+              "      c (number of items):                  ", c, "\n",        
+              "      simulation runs:                      ", runs, "\n\n",
+                  
+              "    Estimated statistical power: ", formatC(simres$power, format = "f", digits = 3), "\n",
+              "    Nominal significance level:  ", sig.level, "\n",
+              "    Empirical significance level:", formatC(simres$type1, format = "f", digits = 3), "\n")
+            
+        } else {
+                      
+          cat("\n  Statistical Power Simulation for the Rasch model \n\n",
               
-            "    b (numer of persons in each group): ", b, "\n",
-            "    c (numer of items):                 ", c, "\n",   
-            "    simulation runs:                    ", runs, "\n\n",
+              "    Test design with", nrow(design), "booklets: \n", 
+              "      b (number of persons in each group):  ", b, "\n",
+              "        (number of persons in each booklet):", b / nrow(design), "\n",
+              "      c (number of items):                  ", c, "\n",        
+              "      simulation runs:                      ", runs, "\n\n",
               
-            "    Estimated statistical power: ", formatC(simres$power, format = "f", digits = 3), "\n",
-            "    Nominal significance level:  ", sig.level, "\n")  
-                
+              "    Estimated statistical power: ", formatC(simres$power, format = "f", digits = 3), "\n",
+              "    Nominal significance level:  ", sig.level, "\n")  
+            
+        }
+        
       }
         
       cat("--------------------------------------------------------\n")
@@ -194,22 +260,37 @@ pwr.rasch <- function(b, ipar = list(),
   } else {  # length(b) > 1  
     
     if (output == TRUE) {
-          
-      cat("\n  Statistical Power Simulation for the Rasch model \n\n",
-              
-          "    b (numer of persons in each group): ", paste(b, collapse = ", "), "\n",
-          "    c (numer of items):                 ", unique(unlist(lapply(ipar, length))), "\n",
-          "    simulation runs:                    ", runs, "\n\n",
-              
-          "    Estimated statistical power: \n")
-          
+
+      if (is.null(design)) {
+
+        cat("\n  Statistical Power Simulation for the Rasch model \n\n",
+            
+            "    b (numer of persons in each group): ", paste(b, collapse = ", "), "\n",
+            "    c (numer of items):                 ", unique(unlist(lapply(ipar, length))), "\n",
+            "    simulation runs:                    ", runs, "\n\n",
+            
+            "    Estimated statistical power: \n")
+        
+      } else {
+        
+        cat("\n  Statistical Power Simulation for the Rasch model \n\n",
+            
+            "    Test design with", nrow(design), "booklets: \n",
+            "      b (numer of persons in each group):   ", paste(b, collapse = ", "), "\n",
+            "        (number of persons in each booklet):", paste(b / nrow(design), collapse = ", "), "\n",
+            "      c (numer of items):                   ", unique(unlist(lapply(ipar, length))), "\n",
+            "      simulation runs:                      ", runs, "\n\n",
+            
+            "    Estimated statistical power: \n")
+        
+      }  
+                  
       for (i in 1:length(simres)) {
             
         cat(paste0("      b = ", formatC(b[i], digits = max(nchar(b)) - 1, format = "d"), ":"),
             formatC(simres[[i]][["power"]], format = "f", digits = 3), "\n")
             
       }  
-          
           
       cat("\n     Nominal significance level:  ", sig.level, "\n")
           
